@@ -1,17 +1,26 @@
 from fastapi import HTTPException
 from database.mongodb import usuarios_collection, parse_usuario
+from models.dto import UsuarioAtualizacaoDTO
 from models.usuario import Usuario
 from bson.objectid import ObjectId
-from datetime import datetime
+from datetime import datetime, timedelta
 
+
+async def buscar_todos_usuarios():
+    usuarios = []
+    async for usuario in usuarios_collection.find():
+        usuario["id"] = str(usuario["_id"])
+        usuarios.append(usuario)
+    return usuarios
+    
 async def criar_usuario(usuario: Usuario):
-    validar_nome(usuario.nome)
+    validar_nome(usuario.nome_usuario)
     validar_email(usuario.email)
     validar_senha(usuario.senha)
-
     usuario.nome_usuario = f"{usuario.nome.lower()}.{usuario.nome.split()[-1].lower()}"
     usuario.data_criacao = usuario.data_atualizacao = datetime.now().strftime("%d/%m/%Y %H:%M")
-    novo_usuario = await usuarios_collection.insert_one(usuario.dict())
+    usuario.ativo = True
+    novo_usuario = await usuarios_collection.insert_one(usuario.dict(exclude_unset=True))
     return await obter_usuario_por_id(novo_usuario.inserted_id)
 
 async def obter_usuario_por_id(usuario_id: str):
@@ -19,8 +28,18 @@ async def obter_usuario_por_id(usuario_id: str):
     if usuario:
         return parse_usuario(usuario)
 
-async def atualizar_usuario(usuario_id: str, dados: dict):
-    dados["data_atualizacao"] = datetime.now()
+async def atualizar_usuario(usuario_id: str, usuario: UsuarioAtualizacaoDTO):
+    validar_nome(usuario.nome_usuario)
+    validar_email(usuario.email)
+    validar_senha(usuario.senha)
+    usuario_dict = usuario.dict(exclude_unset=True)
+    usuario_dict["data_atualizacao"] = datetime.now().strftime("%d/%m/%Y %H:%M") 
+    await usuarios_collection.update_one({"_id": ObjectId(usuario_id)}, {"$set": usuario_dict})
+    return await obter_usuario_por_id(usuario_id)
+
+async def redefinir_senha(usuario_id: str, dados: dict):
+    validar_senha(dados["senha"])
+    dados["data_atualizacao"] = datetime.now().strftime("%d/%m/%Y %H:%M")
     await usuarios_collection.update_one({"_id": ObjectId(usuario_id)}, {"$set": dados})
     return await obter_usuario_por_id(usuario_id)
 
@@ -56,6 +75,7 @@ async def login_usuario(nome_usuario: str, senha: str):
             "description": "o nome de usuario ou senha sao invalidos",
             "parameters": "senha or nome_usuario"
         })
+
     
 def validar_nome(nome: str):
     nome = nome.strip()
@@ -68,7 +88,7 @@ def validar_nome(nome: str):
                 "parameter_name": "nome_usuario"
             }
         )
-
+    
     if nome.count('.') != 1:
         raise HTTPException(
             status_code = 400,
@@ -102,7 +122,7 @@ def validar_email(email: str):
                 "parameter_name": "email"
             }
         )
-
+    
 def validar_senha(senha: str):
     if len(senha) < 8:
         raise HTTPException(
@@ -113,6 +133,7 @@ def validar_senha(senha: str):
                 "parameter_name": "senha"
             }
         )
+
 async def verificar_sessao_valida(usuario_id: str):
     usuario = await usuarios_collection.find_one({"_id": ObjectId(usuario_id)})
     if usuario:
@@ -126,4 +147,4 @@ async def verificar_sessao_valida(usuario_id: str):
             )
         return usuario
     else:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado") 
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
