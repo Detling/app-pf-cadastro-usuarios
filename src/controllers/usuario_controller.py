@@ -1,5 +1,6 @@
 from fastapi import HTTPException
 from database.mongodb import usuarios_collection, parse_usuario
+from models.dto import UsuarioAtualizacaoDTO
 from models.usuario import Usuario
 from bson.objectid import ObjectId
 from datetime import datetime
@@ -15,9 +16,13 @@ async def obter_usuario_por_id(usuario_id: str):
     if usuario:
         return parse_usuario(usuario)
 
-async def atualizar_usuario(usuario_id: str, dados: dict):
-    dados["data_atualizacao"] = datetime.now()
-    await usuarios_collection.update_one({"_id": ObjectId(usuario_id)}, {"$set": dados})
+async def atualizar_usuario(usuario_id: str, usuario: UsuarioAtualizacaoDTO):
+    validar_nome(usuario.nome_usuario)
+    validar_email(usuario.email)
+    validar_senha(usuario.senha)
+    usuario_dict = usuario.dict(exclude_unset=True)
+    usuario_dict["data_atualizacao"] = datetime.now().strftime("%d/%m/%Y %H:%M") 
+    await usuarios_collection.update_one({"_id": ObjectId(usuario_id)}, {"$set": usuario_dict})
     return await obter_usuario_por_id(usuario_id)
 
 async def deletar_usuario(usuario_id: str):
