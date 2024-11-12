@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from models.dto import UsuarioAtualizacaoDTO, UsuarioCriacaoDTO
 from models.usuario import Usuario
 from controllers.usuario_controller import (
     criar_usuario,
@@ -11,7 +12,8 @@ from controllers.usuario_controller import (
 app = FastAPI()
 
 @app.post("/usuarios/", response_model=Usuario)
-async def endpoint_criar_usuario(usuario: Usuario):
+async def endpoint_criar_usuario(usuario_dto: UsuarioCriacaoDTO):
+    usuario = Usuario(**usuario_dto.dict())
     return await criar_usuario(usuario)
 
 @app.get("/usuarios/{usuario_id}", response_model=Usuario)
@@ -21,9 +23,13 @@ async def endpoint_obter_usuario(usuario_id: str):
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     return usuario
 
+@app.post("/usuarios/login/")
+async def endpoint_login(nome_usuario: str, senha: str):
+    return await login_usuario(nome_usuario, senha)
+
 @app.put("/usuarios/{usuario_id}", response_model=Usuario)
-async def endpoint_atualizar_usuario(usuario_id: str, dados: dict):
-    usuario = await atualizar_usuario(usuario_id, dados)
+async def endpoint_atualizar_usuario(usuario_id: str, usuario: UsuarioAtualizacaoDTO):
+    usuario = await atualizar_usuario(usuario_id, usuario)
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     return usuario
