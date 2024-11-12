@@ -1,1 +1,6 @@
-# app-pf-cadastro-usuarios
+-Tais Camila Reyes Ramos
+-Fylo Lufuankenda
+-Vinicius Dias 
+-João Vitor dos Santos Pereira
+-Guilherme de Oliveira Detling
+-Danilo Cristino de lima
