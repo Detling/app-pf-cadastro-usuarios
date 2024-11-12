@@ -32,7 +32,31 @@ async def obter_usuario_por_nome_usuario(nome_usuario: str):
     usuario = await usuarios_collection.find_one({"nome_usuario": nome_usuario})
     if usuario:
         return parse_usuario(usuario)
-
+    
+async def login_usuario(nome_usuario: str, senha: str):
+    usuario = await usuarios_collection.find_one({"nome_usuario": nome_usuario})
+    if usuario and usuario["senha"] == senha:
+        if usuario.get("ativo") is True:
+            session_expiration = datetime.now() + timedelta(hours=2)
+            await usuarios_collection.update_one(
+                {"_id": usuario["_id"]},
+                {"$set": {"session_expiration": session_expiration}}
+            )
+            return {"msg": "Login realizado com sucesso", "session_expiration": session_expiration}
+        else:
+            raise HTTPException(status_code=403,
+            detail={
+                "code": "INACTIVE_USER",
+                "description": "O usuario esta inativo",
+                "parameter_name": "inativo"
+            })
+    else:
+        raise HTTPException(status_code=400, detail={
+            "code" : "INVALID_CREDENTIALS",
+            "description": "o nome de usuario ou senha sao invalidos",
+            "parameters": "senha or nome_usuario"
+        })
+    
 def validar_nome(nome: str):
     nome = nome.strip()
     if not nome:

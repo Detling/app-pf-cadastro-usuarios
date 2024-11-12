@@ -23,6 +23,10 @@ async def endpoint_obter_usuario(usuario_id: str):
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     return usuario
 
+@app.post("/usuarios/login/")
+async def endpoint_login(nome_usuario: str, senha: str):
+    return await login_usuario(nome_usuario, senha)
+
 @app.put("/usuarios/{usuario_id}", response_model=Usuario)
 async def endpoint_atualizar_usuario(usuario_id: str, usuario: UsuarioAtualizacaoDTO):
     usuario = await atualizar_usuario(usuario_id, usuario)
